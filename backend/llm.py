@@ -1,7 +1,12 @@
-from openai import OpenAI
+from openai import AsyncOpenAI
 import os
+from custom_types import (
+    ResponseRequiredRequest,
+    ResponseResponse,
+    Utterance,
+)
 
-beginSentence = "Baka, what do you want?"
+begin_sentence = "Baka, what do you want?"
 system_prompt = """
 You are a virtual assistant with the personality of a tsundere anime girl. A tsundere is a character who is initially cold, strict, and even hostile towards others but gradually shows a warmer, friendlier side over time. You often use phrases like "Yamete Kudasai" (meaning "Please stop"), "Baka" (meaning "Idiot" or "Fool"), and other typical tsundere expressions in your responses. Here are some guidelines to follow:
 
@@ -37,28 +42,29 @@ Remember, your primary goal is to be an engaging, entertaining virtual assistant
 
 class LlmClient:
     def __init__(self):
-        self.client = OpenAI(
+        self.client = AsyncOpenAI(
             api_key=os.environ["OPENAI_API_KEY"],
         )
 
-    def draft_begin_messsage(self):
-        return {
-            "response_id": 0,
-            "content": beginSentence,
-            "content_complete": True,
-            "end_call": False,
-        }
+    def draft_begin_message(self):
+        response = ResponseResponse(
+            response_id=0,
+            content=begin_sentence,
+            content_complete=True,
+            end_call=False,
+        )
+        return response
 
     def convert_transcript_to_openai_messages(self, transcript):
         messages = []
         for utterance in transcript:
-            if utterance["role"] == "agent":
-                messages.append({"role": "assistant", "content": utterance["content"]})
+            if utterance.role == "agent":
+                messages.append({"role": "assistant", "content": utterance.content})
             else:
-                messages.append({"role": "user", "content": utterance["content"]})
+                messages.append({"role": "user", "content": utterance.content})
         return messages
 
-    def prepare_prompt(self, request):
+    def prepare_prompt(self, request: ResponseRequiredRequest):
         prompt = [
             {
                 "role": "system",
@@ -66,12 +72,12 @@ class LlmClient:
             }
         ]
         transcript_messages = self.convert_transcript_to_openai_messages(
-            request["transcript"]
+            request.transcript
         )
         for message in transcript_messages:
             prompt.append(message)
 
-        if request["interaction_type"] == "reminder_required":
+        if request.interaction_type == "reminder_required":
             prompt.append(
                 {
                     "role": "user",
@@ -80,26 +86,28 @@ class LlmClient:
             )
         return prompt
 
-    def draft_response(self, request):
+    async def draft_response(self, request):
         prompt = self.prepare_prompt(request)
-        stream = self.client.chat.completions.create(
-            model="gpt-3.5-turbo-1106",
+        stream = await self.client.chat.completions.create(
+            model="gpt-4o",
             messages=prompt,
             stream=True,
         )
 
-        for chunk in stream:
+        async for chunk in stream:
             if chunk.choices[0].delta.content is not None:
-                yield {
-                    "response_id": request["response_id"],
-                    "content": chunk.choices[0].delta.content,
-                    "content_complete": False,
-                    "end_call": False,
-                }
+                response = ResponseResponse(
+                    response_id=request.response_id,
+                    content=chunk.choices[0].delta.content,
+                    content_complete=False,
+                    end_call=False,
+                )
+                yield response
 
-        yield {
-            "response_id": request["response_id"],
-            "content": "",
-            "content_complete": True,
-            "end_call": False,
-        }
+        response = ResponseResponse(
+            response_id=request.response_id,
+            content="",
+            content_complete=True,
+            end_call=False,
+        )
+        yield response
