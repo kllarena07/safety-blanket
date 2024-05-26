@@ -19,21 +19,21 @@ export default function Chat() {
   useEffect(() => {
     let messageWs: WebSocket;
     if (typeof userPhone !== 'undefined') {
-      messageWs = new WebSocket(`ws://7771014229a3.ngrok.app/timed-ws?client_id=${userPhone}`);
+      messageWs = new WebSocket(`wss://7771014229a3.ngrok.app/timed-ws?client_id=${userPhone}`);
       messageWs.onopen = () => {
         console.log('Message WS is open now.');
         setMsgSocket(messageWs);
         setInputDisabled(false);
       };
-  
+
       messageWs.onmessage = (event) => {
         const data = JSON.parse(event.data);
-  
+
         if (data.owner === "agent") {
           console.log('WebSocket message received:', event);
           setInputDisabled(false);
           setMessages(prevMessages => [...prevMessages, data]);
-  
+
           if (data.content.includes("Calling emergency phone number.")) {
             setTimeout(() => {
               redirect("/warning");
@@ -43,7 +43,7 @@ export default function Chat() {
           setCheckInTime(data.content);
         }
       };
-      
+
       messageWs.onclose = () => {
         console.log('Message WS is closed now.');
       };
