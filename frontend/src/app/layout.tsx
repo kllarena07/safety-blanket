@@ -1,5 +1,5 @@
 import { Inter } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
+import { ClerkProvider, SignedIn } from "@clerk/nextjs";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 
@@ -40,7 +40,9 @@ export default function RootLayout({
           <main className="h-[calc(100%-108px)]">
             {children}
           </main>
-          <Navbar />
+          <SignedIn>
+            <Navbar />
+          </SignedIn>
         </body>
       </html>
     </ClerkProvider>
