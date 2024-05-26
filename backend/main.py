@@ -354,7 +354,7 @@ async def timed_websocket_endpoint(
     countdown = 5
     potential_emergency = False
     emergency_countdown = 10
-    
+
     user_id = client_id
     user_id = "+" + user_id[1:]
 
@@ -391,6 +391,7 @@ async def timed_websocket_endpoint(
                                 {"owner": "agent", "content": "Dangerous situation detected. Calling emergency phone number."}
                             )
                         )
+                        break
             except asyncio.TimeoutError:
                 if countdown > 0:
                     countdown -= 1
