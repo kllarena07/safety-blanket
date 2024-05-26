@@ -103,3 +103,14 @@ class TwilioClient:
             print(f"Calling {to_number} from {from_number}")
         except Exception as err:
             print(err)
+
+    def create_emergency_call(self, url, to_number, from_number):
+        try:
+            self.client.calls.create(
+                url=url,
+                to=to_number,
+                from_=from_number,
+            )
+            print(f"Call from: {from_number} to: {to_number}")
+        except Exception as err:
+            print(err)
