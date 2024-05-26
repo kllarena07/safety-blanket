@@ -10,7 +10,7 @@ export default function Navbar() {
 
 
   const handleClick = () => {
-    fetch(`https://7771014229a3.ngrok.app/phone/${userPhone}`)
+    fetch(`https://0072-128-195-97-152.ngrok-free.app/phone/${userPhone}`)
       .then((response) => response.json())
       .then((data) => console.log(data));
   }
@@ -28,7 +28,7 @@ export default function Navbar() {
         <button className="text-[#843232] bg-[#FFDBDB] rounded-full font-bold px-10 py-5 w-[80%]" onClick={() => handleClick()}>Call Companion</button>
         <button onClick={() => setToggle(!isToggled)} className="flex items-center justify-center bg-[#CC7178] w-[64px] h-[64px] rounded-full p-2.5">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="white" className="size-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
           </svg>
         </button>
       </footer>

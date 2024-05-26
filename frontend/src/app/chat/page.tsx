@@ -19,7 +19,7 @@ export default function Chat() {
   useEffect(() => {
     let messageWs: WebSocket;
     if (typeof userPhone !== 'undefined') {
-      messageWs = new WebSocket(`wss://7771014229a3.ngrok.app/timed-ws?client_id=${userPhone}`);
+      messageWs = new WebSocket(`wss://0072-128-195-97-152.ngrok-free.app/timed-ws?client_id=${userPhone}`);
       messageWs.onopen = () => {
         console.log('Message WS is open now.');
         setMsgSocket(messageWs);

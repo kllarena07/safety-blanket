@@ -28,7 +28,7 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     if (!userPhone) return;
-    fetch(`https://7771014229a3.ngrok.app/user/${userPhone}`)
+    fetch(`https://0072-128-195-97-152.ngrok-free.app/user/${userPhone}`)
       .then((res) => res.json())
       .then((data) => {
         // Data might be empty
@@ -51,7 +51,7 @@ const SettingsPage: React.FC = () => {
 
   const handleSave = () => {
     // Make a post request to same url
-    fetch(`https://7771014229a3.ngrok.app/user/${userPhone}`, {
+    fetch(`https://0072-128-195-97-152.ngrok-free.app/user/${userPhone}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

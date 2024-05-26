@@ -34,7 +34,7 @@ export default function Timer() {
 
     useEffect(() => {
         if (!userPhone) return;
-        fetch(`https://7771014229a3.ngrok.app/user/${userPhone}`)
+        fetch(`https://0072-128-195-97-152.ngrok-free.app/user/${userPhone}`)
             .then((res) => res.json())
             .then((data) => {
                 // Data might be empty
@@ -75,7 +75,7 @@ export default function Timer() {
         } else if (isRunning && timeLeft === 0) {
             clearInterval(timer);
             setIsRunning(false);
-            fetch(`https://7771014229a3.ngrok.app/emergency/${userPhone}`)
+            fetch(`https://0072-128-195-97-152.ngrok-free.app/emergency/${userPhone}`)
                 .then((response) => response.json())
                 .then((data) => console.log(data));
             alert('Alerting emergency contact');
