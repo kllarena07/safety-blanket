@@ -54,7 +54,7 @@ export default function Chat() {
 
     msgSocket.send(JSON.stringify(data));
     setInputDisabled(true);
-    setMessages(prevMessages => [ ...prevMessages, data ]);
+    setMessages(prevMessages => [...prevMessages, data]);
     setInputValue("");
     setCheckInTime(10);
   }

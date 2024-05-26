@@ -388,6 +388,22 @@ async def timed_websocket_endpoint(websocket: WebSocket, client_id: Optional[str
         await manager.disconnect(client_id)
 
 
+@app.get("/emergency/{phone_number}")
+def call_emergency(phone_number: str):
+    user_data = read_user_data(db, phone_number)
+    emergency_number = user_data["emergency_number"]
+    url = (
+        f"{os.getenv('NGROK_IP_ADDRESS')}/twilio-emergency-webhook/{phone_number}/edb76d4c1096b1b790235111b634b619",
+    )
+
+    twilio_client.create_emergency_call(
+        from_number="+12254173514", to_number=emergency_number, url=url
+    )
+    return JSONResponse(
+        status_code=200, content={"message": "Emergency call initiated"}
+    )
+
+
 @app.websocket("/message-ws")
 async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = None):
     if client_id is None:

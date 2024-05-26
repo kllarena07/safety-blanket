@@ -13,7 +13,7 @@ export default function Navbar() {
   console.log(pathname);
 
   const handleClick = () => {
-    fetch(`http://localhost:8000/phone/${userPhone}`)
+    fetch(`https://7771014229a3.ngrok.app/phone/${userPhone}`)
       .then((response) => response.json())
       .then((data) => console.log(data));
   }
