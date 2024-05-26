@@ -15,7 +15,7 @@ export default function Home() {
           <div className="text-center p-5 rounded-lg">
             <h1 className="text-5xl text-black font-bold mb-4">Safety Blanket</h1>
             <div className="flex justify-center w-[100%]">
-              <img src="blanket-girl.png" alt="Safety Blanket" className="w-70 mb-5" />
+              <Image src={BlanketGirl} alt="Safety Blanket" className="w-70 mb-5" />
             </div>
             <div className="flex flex-col justify-center items-center space-y-4">
               <div className="flex justify-center text-lg text-black font-semibold bg-[#FFDBDB] rounded-full shadow-md hover:bg-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-opacity-75 px-10 py-5 w-[50%]">
