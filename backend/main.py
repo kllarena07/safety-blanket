@@ -413,6 +413,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = No
             elif event == "user_data":
                 user_data = json.loads(data["user_data"])
                 save_user_data(db, data["phone_number"], user_data)
+            elif event == "get_user_data":
+                user_data = read_user_data(db, data["phone_number"])
+                await websocket.send_json({"user_data": user_data})
             elif event == "conversation_message":
                 prompt.append(
                     {"role": "user", "content": f"User message\n{data['content']}"}
@@ -434,9 +437,11 @@ async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = No
         print("Disconnecting...")
         await manager.disconnect(client_id)
 
+
 @app.get("/end-trip")
 def end_trip():
     print("Ending trip.")
+
 
 @app.get("/end-safety-timer")
 def end_safety_timer():
