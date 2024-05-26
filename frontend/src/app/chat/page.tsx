@@ -19,7 +19,7 @@ export default function Chat() {
     let messageWs: WebSocket;
     if (userPhone) {
       messageWs = new WebSocket(`ws://7771014229a3.ngrok.app/timed-ws?client_id=${userPhone}`);
-  
+
       messageWs.onopen = () => {
         console.log('Message WS is open now.');
         setMsgSocket(messageWs);
