@@ -7,45 +7,16 @@ import { useUser } from '@clerk/nextjs';
 export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [inputDisabled, setInputDisabled] = useState(true);
+  const [checkInTime, setCheckInTime] = useState(5);
   const [inputValue, setInputValue] = useState("");
   const [msgSocket, setMsgSocket] = useState(null);
   const chatRef = useRef(null);
 
-  interface UserData {
-    name: string;
-    emergency_number: string;
-    timer_passcode: string;
-    keyword: string;
-    last_location: string;
-    last_updated: string;
-  }
-
   const { user } = useUser();
   const userPhone = user?.primaryPhoneNumber?.phoneNumber
-  const [userData, setUserData] = useState<UserData>({
-    name: '',
-    emergency_number: '',
-    timer_passcode: '',
-    keyword: '',
-    last_location: '',
-    last_updated: '',
-  });
 
   useEffect(() => {
-    if (!userPhone) return;
-    fetch(`http://localhost:8000/user/${userPhone}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setUserData(data);
-      })
-      .catch((err) => {
-        console.error(err);
-      });
-  }, [userPhone]);
-  
-  useEffect(() => {
-    const messageWs = new WebSocket('ws://127.0.0.1:8000/message-ws?client_id=123');
-    // const checkInWs = new WebSocket('ws://127.0.0.1:8000/checkin-ws?client_id=123');
+    const messageWs = new WebSocket(`ws://127.0.0.1:8000/timed-ws?client_id=${userPhone}`);
     
     messageWs.onopen = () => {
       console.log('Message WS is open now.');
@@ -54,39 +25,29 @@ export default function Chat() {
     };
 
     messageWs.onmessage = (event) => {
-      console.log('WebSocket message received:', event);
-      setInputDisabled(false);
-      setMessages(prevMessages => [...prevMessages, JSON.parse(event.data)]);
+      const data = JSON.parse(event.data);
+
+      if (data.owner === "agent") {
+        console.log('WebSocket message received:', event);
+        setInputDisabled(false);
+        setMessages(prevMessages => [...prevMessages, data]);
+      } else {
+        setCheckInTime(data.content);
+      }
     };
 
     messageWs.onclose = () => {
       console.log('Message WS is closed now.');
     };
-
-    // checkInWs.onopen = () => {
-    //   console.log('WebSocket is open now.');
-    //   setInputDisabled(false);
-    // };
-
-    // checkInWs.onmessage = (event) => {
-    //   console.log('WebSocket message received:', event);
-    //   setMessages(prevMessages => [...prevMessages, JSON.parse(event.data)]);
-    // };
-
-    // checkInWs.onclose = () => {
-    //   console.log('WebSocket is closed now.');
-    // };
     
     return () => {
       messageWs.close();
-      // checkInWs.close();
     };
-  }, []);
+  }, [userPhone]);
 
   const appendNewMessage = (message: string) => {
     const data = {
       event: message.toLowerCase().includes("pineapple") ? "event" : "conversation_message",
-      user_id: "12486353063",
       owner: "user",
       content: message
     };
@@ -95,6 +56,7 @@ export default function Chat() {
     setInputDisabled(true);
     setMessages(prevMessages => [ ...prevMessages, data ]);
     setInputValue("");
+    setCheckInTime(10);
   }
 
   const handleKeyDown = (evt) => {
@@ -128,7 +90,7 @@ export default function Chat() {
             </section>
         </section>
         <section className="bg-[#CC7178] text-black font-bold p-5 rounded-full my-5">
-          Next Check-in
+          Next Check-in: {checkInTime}
         </section>
       </section>
     </main>
