@@ -1,9 +1,8 @@
 "use client";
-import { SignUpButton, SignInButton, SignedIn, SignedOut, useUser, SignOutButton } from "@clerk/nextjs";
-import { useRouter } from "next/router";
-import { useEffect } from "react";
+import { SignUpButton, SignInButton, SignedIn, SignedOut, SignOutButton } from "@clerk/nextjs";
 import Head from "next/head";
 import Image from "next/image";
+import BlanketGirl from "/public/blanket-girl.png"
 
 export default function Home() {
   const handleTimer = async () => {
