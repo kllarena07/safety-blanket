@@ -7,30 +7,46 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [inputDisabled, setInputDisabled] = useState(true);
   const [inputValue, setInputValue] = useState("");
-  const [socket, setSocket] = useState(null);
+  const [msgSocket, setMsgSocket] = useState(null);
   const chatRef = useRef(null);
   
   useEffect(() => {
-    const ws = new WebSocket('ws://127.0.0.1:8000/ws?client_id=123');
+    const messageWs = new WebSocket('ws://127.0.0.1:8000/message-ws?client_id=123');
+    const checkInWs = new WebSocket('ws://127.0.0.1:8000/checkin-ws?client_id=123');
     
-    ws.onopen = () => {
-      console.log('WebSocket is open now.');
-      setSocket(ws);
+    messageWs.onopen = () => {
+      console.log('Message WS is open now.');
+      setMsgSocket(messageWs);
       setInputDisabled(false);
     };
 
-    ws.onmessage = (event) => {
+    messageWs.onmessage = (event) => {
       console.log('WebSocket message received:', event);
       setInputDisabled(false);
       setMessages(prevMessages => [...prevMessages, JSON.parse(event.data)]);
     };
 
-    ws.onclose = () => {
-      console.log('WebSocket is closed now.');
+    messageWs.onclose = () => {
+      console.log('Message WS is closed now.');
     };
 
+    checkInWs.onopen = () => {
+      console.log('WebSocket is open now.');
+      setInputDisabled(false);
+    };
+
+    checkInWs.onmessage = (event) => {
+      console.log('WebSocket message received:', event);
+      setMessages(prevMessages => [...prevMessages, JSON.parse(event.data)]);
+    };
+
+    checkInWs.onclose = () => {
+      console.log('WebSocket is closed now.');
+    };
+    
     return () => {
-      ws.close();
+      messageWs.close();
+      checkInWs.close();
     };
   }, []);
 
@@ -42,7 +58,7 @@ export default function Chat() {
       content: message
     };
 
-    socket.send(JSON.stringify(data));
+    msgSocket.send(JSON.stringify(data));
     setInputDisabled(true);
     setMessages(prevMessages => [ ...prevMessages, data ]);
     setInputValue("");
@@ -65,7 +81,7 @@ export default function Chat() {
                   <p key={index}>{content}</p>
                 </li>
               ))}
-              {inputDisabled && socket !== null ? (
+              {inputDisabled && msgSocket !== null ? (
                 <li className="self-start bg-[#CC7178] flex flex-col w-1/2 py-2 px-5 rounded-full text-black mb-5">
                   ...
                 </li>
