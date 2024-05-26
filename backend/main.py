@@ -354,6 +354,9 @@ async def timed_websocket_endpoint(
     countdown = 5
     potential_emergency = False
     emergency_countdown = 10
+    
+    user_id = client_id
+    user_id = "+" + user_id[1:]
 
     try:
         while True:
@@ -361,8 +364,9 @@ async def timed_websocket_endpoint(
                 data = await asyncio.wait_for(websocket.receive_json(), timeout=1)
 
                 event = data["event"]
+
                 if event == "conversation_message":
-                    if data["content"].lower() == "yes" or data["content"].lower == "y":    
+                    if data["content"].lower() == "yes" or data["content"].lower == "y":
                         print("Okay.")
                         await websocket.send_text(
                             json.dumps(
@@ -371,9 +375,7 @@ async def timed_websocket_endpoint(
                         )
                         countdown = 5
                         emergency_countdown = 10
-                    elif data["content"].lower() == "no" or data["content"].lower == "n":
-                        user_id = client_id
-                        user_id = "+" + user_id[1:]
+                    else:
                         url = (
                             f"{os.getenv('NGROK_IP_ADDRESS')}/twilio-emergency-webhook/{user_id}/edb76d4c1096b1b790235111b634b619",
                         )
@@ -382,6 +384,12 @@ async def timed_websocket_endpoint(
                         to_number = user_data["emergency_number"]
                         twilio_client.create_emergency_call(
                             from_number=from_number, to_number=to_number, url=url
+                        )
+
+                        await websocket.send_text(
+                            json.dumps(
+                                {"owner": "agent", "content": "Dangerous situation detected. Calling emergency phone number."}
+                            )
                         )
             except asyncio.TimeoutError:
                 if countdown > 0:
@@ -395,8 +403,6 @@ async def timed_websocket_endpoint(
                     print(emergency_countdown)
                     emergency_countdown -= 1
                 else:
-                    user_id = client_id
-                    user_id = "+" + user_id[1:]
                     url = (
                         f"{os.getenv('NGROK_IP_ADDRESS')}/twilio-emergency-webhook/{user_id}/edb76d4c1096b1b790235111b634b619",
                     )

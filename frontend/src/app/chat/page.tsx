@@ -16,29 +16,31 @@ export default function Chat() {
   const userPhone = user?.primaryPhoneNumber?.phoneNumber
 
   useEffect(() => {
-    const messageWs = new WebSocket(`ws://7771014229a3.ngrok.app/timed-ws?client_id=${userPhone}`);
-
-    messageWs.onopen = () => {
-      console.log('Message WS is open now.');
-      setMsgSocket(messageWs);
-      setInputDisabled(false);
-    };
-
-    messageWs.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-
-      if (data.owner === "agent") {
-        console.log('WebSocket message received:', event);
+    if (userPhone) {
+      const messageWs = new WebSocket(`ws://7771014229a3.ngrok.app/timed-ws?client_id=${userPhone}`);
+  
+      messageWs.onopen = () => {
+        console.log('Message WS is open now.');
+        setMsgSocket(messageWs);
         setInputDisabled(false);
-        setMessages(prevMessages => [...prevMessages, data]);
-      } else {
-        setCheckInTime(data.content);
-      }
-    };
-
-    messageWs.onclose = () => {
-      console.log('Message WS is closed now.');
-    };
+      };
+  
+      messageWs.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+  
+        if (data.owner === "agent") {
+          console.log('WebSocket message received:', event);
+          setInputDisabled(false);
+          setMessages(prevMessages => [...prevMessages, data]);
+        } else {
+          setCheckInTime(data.content);
+        }
+      };
+  
+      messageWs.onclose = () => {
+        console.log('Message WS is closed now.');
+      };
+    }
 
     return () => {
       messageWs.close();
@@ -47,7 +49,7 @@ export default function Chat() {
 
   const appendNewMessage = (message: string) => {
     const data = {
-      event: message.toLowerCase().includes("pineapple") ? "event" : "conversation_message",
+      event: "conversation_message",
       owner: "user",
       content: message
     };
