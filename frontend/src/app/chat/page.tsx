@@ -5,20 +5,21 @@ import { useEffect, useRef, useState } from "react";
 import { useUser } from '@clerk/nextjs';
 
 export default function Chat() {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(Array<any>);
   const [inputDisabled, setInputDisabled] = useState(true);
   const [checkInTime, setCheckInTime] = useState(5);
   const [inputValue, setInputValue] = useState("");
-  const [msgSocket, setMsgSocket] = useState(null);
+  const [msgSocket, setMsgSocket] = useState<WebSocket | null>(null);
   const chatRef = useRef(null);
 
   const { user } = useUser();
   const userPhone = user?.primaryPhoneNumber?.phoneNumber
 
   useEffect(() => {
+    let messageWs: WebSocket;
     if (userPhone) {
-      const messageWs = new WebSocket(`ws://7771014229a3.ngrok.app/timed-ws?client_id=${userPhone}`);
-  
+      messageWs = new WebSocket(`ws://7771014229a3.ngrok.app/timed-ws?client_id=${userPhone}`);
+
       messageWs.onopen = () => {
         console.log('Message WS is open now.');
         setMsgSocket(messageWs);
@@ -43,7 +44,7 @@ export default function Chat() {
     }
 
     return () => {
-      messageWs.close();
+      if (messageWs) messageWs.close();
     };
   }, [userPhone]);
 
@@ -54,7 +55,7 @@ export default function Chat() {
       content: message
     };
 
-    msgSocket.send(JSON.stringify(data));
+    msgSocket?.send(JSON.stringify(data));
     setInputDisabled(true);
     setMessages(prevMessages => [...prevMessages, data]);
     setInputValue("");
