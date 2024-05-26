@@ -37,7 +37,7 @@ export default function Home() {
           <div className="flex h-[calc(100dvh-164px)] flex-col justify-center items-center space-y-4">
             <section className="flex items-center justify-center gap-5 w-[90%]">
               <a href='/timer' className="flex items-center justify-center bg-[#CC7178] text-black font-bold w-[200px] h-[200px] rounded-full">Start Safety Timer</a>
-              <a href='/trip' className="flex items-center justify-center bg-[#CC7178] text-black font-bold w-[200px] h-[200px] rounded-full">Start Trip</a>
+              <a href='/chat' className="flex items-center justify-center bg-[#CC7178] text-black font-bold w-[200px] h-[200px] rounded-full">Start Trip</a>
             </section>
             <div className="flex justify-center text-lg text-black font-semibold bg-[#FFDBDB] rounded-full shadow-md hover:bg-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-opacity-75 px-10 py-5 w-[50%]">
               <SignOutButton />
