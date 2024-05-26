@@ -209,5 +209,6 @@ async def websocket_handler(websocket: WebSocket, call_id: str):
         print(f"LLM WebSocket disconnected for {call_id}")
     except Exception as e:
         print(f"LLM WebSocket error for {call_id}: {e}")
+        await websocket.close(1011, "Server error")
     finally:
         print(f"LLM WebSocket connection closed for {call_id}")
