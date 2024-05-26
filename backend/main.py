@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from socket_manager import ConnectionManager
 from typing import Optional
 from llm import LlmClient
+from emergency_llm import EmergencyLLMClient
 import json
 
 from starlette.responses import JSONResponse
@@ -27,10 +28,12 @@ from custom_types import (
     ResponseRequiredRequest,
 )
 
-user_settings = {
+user_data = {
     "name": "Bill Zhang",
-    "emergency_number": "12486353063",
+    "emergency_number": "+12486353063",
     "keyword": "pineapple",
+    "last_location": "UC Irvine Towers",
+    "last_updated": "3 minutes ago",
 }
 
 app = FastAPI()
@@ -142,13 +145,55 @@ async def handle_twilio_voice_webhook(request: Request, agent_id_path: str):
         )
 
 
+# Register call with Retell at this stage and pass in returned call_id to Retell.
+@app.post("/twilio-emergency-webhook/{user_id}/{agent_id_path}")
+async def handle_twilio_voice_webhook(
+    request: Request, user_id: str, agent_id_path: str
+):
+    try:
+        # Check if it is machine
+        post_data = await request.form()
+        if "AnsweredBy" in post_data and post_data["AnsweredBy"] == "machine_start":
+            twilio_client.end_call(post_data["CallSid"])
+            return PlainTextResponse("")
+        elif "AnsweredBy" in post_data:
+            return PlainTextResponse("")
+
+        call_response: RegisterCallResponse = retell.call.register(
+            agent_id=agent_id_path,
+            audio_websocket_protocol="twilio",
+            audio_encoding="mulaw",
+            sample_rate=8000,  # Sample rate has to be 8000 for Twilio
+            from_number=post_data["From"],
+            to_number=post_data["To"],
+            metadata={
+                "twilio_call_sid": post_data["CallSid"],
+                "emergency": True,
+                "user_id": user_id,
+            },
+        )
+        print(f"Call response: {call_response}")
+
+        response = VoiceResponse()
+        start = response.connect()
+        start.stream(
+            url=f"wss://api.retellai.com/audio-websocket/{call_response.call_id}"
+        )
+        return PlainTextResponse(str(response), media_type="text/xml")
+    except Exception as err:
+        print(f"Error in twilio voice webhook: {err}")
+        return JSONResponse(
+            status_code=500, content={"message": "Internal Server Error"}
+        )
+
+
 @app.websocket("/llm-websocket/{call_id}")
 async def websocket_handler(websocket: WebSocket, call_id: str):
     try:
         await websocket.accept()
         # A unique call id is the identifier of each call
         print(f"Handle llm ws for: {call_id}")
-        llm_client = LlmClient()
+        llm_client = None
 
         config = ConfigResponse(
             response_type="config",
@@ -161,17 +206,28 @@ async def websocket_handler(websocket: WebSocket, call_id: str):
         await websocket.send_json(config.__dict__)
 
         response_id = 0
+        llm_client = LlmClient(agent_number="+12254173514", twilio_client=twilio_client)
         first_event = llm_client.draft_begin_message()
         await websocket.send_json(first_event.__dict__)
 
         async def handle_message(request_json):
             nonlocal response_id
+            nonlocal llm_client
 
             # There are 5 types of interaction_type: call_details, pingpong, update_only, response_required, and reminder_required.
             # Not all of them need to be handled, only response_required and reminder_required.
             if request_json["interaction_type"] == "call_details":
                 print(json.dumps(request_json, indent=2))
-                llm_client.update_settings(user_settings)
+                if "emergency" in request_json["call"]["metadata"]:
+                    llm_client = EmergencyLLMClient()
+                    # TODO: This will be later replaced by pulling from database
+                    llm_client.update_data(user_data=user_data)
+                else:
+                    llm_client = LlmClient(
+                        agent_number="+12254173514", twilio_client=twilio_client
+                    )
+                    # TODO: We should only do this step if this phone call is initialized by us
+                    llm_client.update_data(user_data=user_data)
                 return
             if request_json["interaction_type"] == "ping_pong":
                 await websocket.send_json(

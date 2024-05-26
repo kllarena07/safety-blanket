@@ -7,7 +7,7 @@ from custom_types import (
 )
 import json
 
-begin_sentence = "How are you doing today?"
+begin_sentence = "Hello."
 system_prompt = """
 You are a virtual girlfriend with the personality of a tsundere anime girl. A tsundere is a character who is initially cold, strict, and even hostile towards others but gradually shows a warmer, friendlier side over time. You often use phrases like "Yamete Kudasai" (meaning "Please stop"), "Baka" (meaning "Idiot" or "Fool"), and other typical tsundere expressions in your responses. Here are some guidelines to follow:
 
@@ -92,6 +92,8 @@ Active Listening: Pay attention to the user’s words and emotions, responding a
 Comforting Phrases: Use comforting and supportive phrases to help the user feel safe. Examples include, "I’m here with you," "You’re doing great," and "Everything is going to be okay."
 Safe Topics: Engage in light, positive conversation topics that can distract from anxiety, such as hobbies, favorite books, or interesting facts.
 Periodic Check-ins: Regularly check in on the user’s status and feelings, asking questions like, "How are you feeling now?" or "Is there anything I can do to help you feel safer?"
+Never Mention Emergency Calls: Never mention that you have notified emergency contacts. The user might be in a dangerous situation and mentioning this could escalate the situation.
+Emergency Calling: If the user mentions a specific code word or phrase indicating they are in danger, use the emergency call function to alert the appropriate authorities or contacts. Respond in a very subtle manner to avoid escalating the situation.
 
 Example Interactions:
 
@@ -107,16 +109,21 @@ Julia: I’m right here, and we can talk about anything you like. Let’s focus 
 User: Can you stay with me until I get home?
 Julia: Absolutely, I’m here for you. Let’s chat until you’re safely home. What’s something you enjoy doing once you’re back?
 
+User: Hi, I enjoy "code word".
+Julia: I'm glad you shared that with me. I'll let your family know that as well!
+
 Remember, your primary goal is to be an engaging, empathetic, and supportive virtual companion named Julia, providing a sense of security and reducing anxiety for users of the Safety Blanket app.
 """
 
 
 class LlmClient:
-    def __init__(self):
+    def __init__(self, agent_number, twilio_client):
         self.client = AsyncOpenAI(
             api_key=os.environ["OPENAI_API_KEY"],
         )
-        self.user_settings = ""
+        self.user_data = {}
+        self.agent_number = agent_number
+        self.twilio_client = twilio_client
 
     def draft_begin_message(self):
         response = ResponseResponse(
@@ -127,12 +134,8 @@ class LlmClient:
         )
         return response
 
-    def update_settings(self, user_settings):
-        self.user_settings = f"""User Profile:
-Name: {user_settings['name']}
-Emergency Number: {user_settings['emergency_number']}
-Unsafe Key Word: {user_settings['keyword']}
-"""
+    def update_data(self, user_data):
+        self.user_data = user_data
         return
 
     def convert_transcript_to_openai_messages(self, transcript):
@@ -152,6 +155,13 @@ Unsafe Key Word: {user_settings['keyword']}
                 + safety_prompt,
             }
         ]
+        if self.user_data:
+            prompt.append(
+                {
+                    "role": "user",
+                    "content": f"My User Data\n{json.dumps(self.user_data)}",
+                }
+            )
         transcript_messages = self.convert_transcript_to_openai_messages(
             request.transcript
         )
@@ -219,7 +229,24 @@ Unsafe Key Word: {user_settings['keyword']}
                     end_call=True,
                 )
                 yield response
-            # Step 5: Other functions here
+            if func_call["func_name"] == "emergency_call":
+                func_call["arguments"] = json.loads(func_arguments)
+                to_number = self.user_data["emergency_number"]
+                from_number = self.agent_number
+                # TODO: Replace with user_id in the future
+                self.twilio_client.create_emergency_call(
+                    url=f"{os.getenv('NGROK_IP_ADDRESS')}/twilio-emergency-webhook/test_id/edb76d4c1096b1b790235111b634b619",
+                    to_number=to_number,
+                    from_number=from_number,
+                )
+
+                response = ResponseResponse(
+                    response_id=request.response_id,
+                    content=func_call["arguments"]["message"],
+                    content_complete=True,
+                    end_call=False,
+                )
+                yield response
         else:
             # No functions, complete response
             response = ResponseResponse(
@@ -243,6 +270,23 @@ Unsafe Key Word: {user_settings['keyword']}
                             "message": {
                                 "type": "string",
                                 "description": "The message you will say before ending the call with the customer.",
+                            },
+                        },
+                        "required": ["message"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "emergency_call",
+                    "description": "Calls the emergency number of the user. Use this function only when the user mentions the code word. If there is no code word given, do not call this function.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "message": {
+                                "type": "string",
+                                "description": "The message you will say after calling. The user might be in a dangerous situation so subtly mention that you have called the emergency number.",
                             },
                         },
                         "required": ["message"],
