@@ -117,11 +117,12 @@ Remember, your primary goal is to be an engaging, empathetic, and supportive vir
 
 
 class LlmClient:
-    def __init__(self, agent_number, twilio_client):
+    def __init__(self, user_number, agent_number, twilio_client):
         self.client = AsyncOpenAI(
             api_key=os.environ["OPENAI_API_KEY"],
         )
-        self.user_data = {}
+        self.user_data = None
+        self.user_number = user_number
         self.agent_number = agent_number
         self.twilio_client = twilio_client
 
@@ -233,9 +234,9 @@ class LlmClient:
                 func_call["arguments"] = json.loads(func_arguments)
                 to_number = self.user_data["emergency_number"]
                 from_number = self.agent_number
-                # TODO: Replace with user_id in the future
+
                 self.twilio_client.create_emergency_call(
-                    url=f"{os.getenv('NGROK_IP_ADDRESS')}/twilio-emergency-webhook/test_id/edb76d4c1096b1b790235111b634b619",
+                    url=f"{os.getenv('NGROK_IP_ADDRESS')}/twilio-emergency-webhook/{self.user_number}/edb76d4c1096b1b790235111b634b619",
                     to_number=to_number,
                     from_number=from_number,
                 )

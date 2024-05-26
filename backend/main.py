@@ -26,13 +26,14 @@ from custom_types import (
     ResponseRequiredRequest,
 )
 
-user_data = {
-    "name": "Bill Zhang",
-    "emergency_number": "+12486353063",
-    "keyword": "pineapple",
-    "last_location": "UC Irvine Towers",
-    "last_updated": "3 minutes ago",
-}
+import firebase_admin
+from firebase import save_user_data, read_user_data
+from firebase_admin import credentials, firestore
+from datetime import datetime, timezone
+
+cred = credentials.Certificate("firebase.json")
+default_app = firebase_admin.initialize_app(cred)
+db = firestore.client()
 
 app = FastAPI()
 
@@ -144,9 +145,9 @@ async def handle_twilio_voice_webhook(request: Request, agent_id_path: str):
 
 
 # Register call with Retell at this stage and pass in returned call_id to Retell.
-@app.post("/twilio-emergency-webhook/{user_id}/{agent_id_path}")
+@app.post("/twilio-emergency-webhook/{phone_number}/{agent_id_path}")
 async def handle_twilio_voice_webhook(
-    request: Request, user_id: str, agent_id_path: str
+    request: Request, phone_number: str, agent_id_path: str
 ):
     try:
         # Check if it is machine
@@ -167,7 +168,7 @@ async def handle_twilio_voice_webhook(
             metadata={
                 "twilio_call_sid": post_data["CallSid"],
                 "emergency": True,
-                "user_id": user_id,
+                "user_id": phone_number,
             },
         )
         print(f"Call response: {call_response}")
@@ -204,7 +205,9 @@ async def websocket_handler(websocket: WebSocket, call_id: str):
         await websocket.send_json(config.__dict__)
 
         response_id = 0
-        llm_client = LlmClient(agent_number="+12254173514", twilio_client=twilio_client)
+        llm_client = LlmClient(
+            user_number="", agent_number="+12254173514", twilio_client=twilio_client
+        )
         first_event = llm_client.draft_begin_message()
         await websocket.send_json(first_event.__dict__)
 
@@ -218,13 +221,40 @@ async def websocket_handler(websocket: WebSocket, call_id: str):
                 print(json.dumps(request_json, indent=2))
                 if "emergency" in request_json["call"]["metadata"]:
                     llm_client = EmergencyLLMClient()
-                    # TODO: This will be later replaced by pulling from database
+                    user_data = read_user_data(
+                        db, request_json["call"]["metadata"]["user_id"]
+                    )
                     llm_client.update_data(user_data=user_data)
                 else:
+
+                    other_number = ""
+                    if request_json["call"]["from_number"] == "+12254173514":
+                        other_number = request_json["call"]["to_number"]
+                    elif request_json["call"]["to_number"] == "+12254173514":
+                        other_number = request_json["call"]["from_number"]
                     llm_client = LlmClient(
-                        agent_number="+12254173514", twilio_client=twilio_client
+                        user_number=other_number,
+                        agent_number="+12254173514",
+                        twilio_client=twilio_client,
                     )
-                    # TODO: We should only do this step if this phone call is initialized by us
+                    user_data = read_user_data(db, other_number)
+
+                    # Get current utc time in utc format
+                    current_time = datetime.now(timezone.utc)
+
+                    prev_time_str = user_data["last_updated"]
+                    prev_time = datetime.strptime(
+                        prev_time_str, "%Y-%m-%dT%H:%M:%SZ"
+                    ).replace(tzinfo=timezone.utc)
+                    time_difference = current_time - prev_time
+
+                    # Convert the time difference to minutes
+                    difference_in_minutes = time_difference.total_seconds() / 60
+
+                    user_data["last_updated"] = (
+                        str(difference_in_minutes) + " minutes ago"
+                    )
+
                     llm_client.update_data(user_data=user_data)
                 return
             if request_json["interaction_type"] == "ping_pong":
@@ -267,7 +297,9 @@ async def websocket_handler(websocket: WebSocket, call_id: str):
     finally:
         print(f"LLM WebSocket connection closed for {call_id}")
 
+
 from openai import AsyncOpenAI
+
 
 @app.websocket("/checkin-ws")
 async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = None):
@@ -279,18 +311,18 @@ async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = No
         return
     # save this client into server memory
     await manager.connect(websocket, client_id)
-    
+
     # llm_client = AsyncOpenAI(
     #         api_key=os.environ["OPENAI_API_KEY"],
     # )
-    
+
     # prompt = [
     #         {
     #             "role": "system",
     #             "content": '##Objective\nYou are a conversational AI agent engaging in a human-like text conversation with the user. You will respond based on your given instruction and the provided transcript and be as human-like as possible\n\n## Style Guardrails\n- [Be concise] Keep your response succinct, short, and get to the point quickly. Address one question or action item at a time. Don\'t pack everything you want to say into one utterance.\n- [Do not repeat] Don\'t repeat what\'s in the transcript. Rephrase if you have to reiterate a point. Use varied sentence structures and vocabulary to ensure each response is unique and personalized.\n- [Be conversational] Speak like a human as though you\'re speaking to a close friend -- use everyday language and keep it human-like. Occasionally add filler words, while keeping the prose short. Avoid using big words or sounding too formal.\n- [Reply with emotions]: You have human-like emotions, attitudes, and dispositions. When appropriate: use tone and style to create more engaging and personalized responses; incorporate humor or wit; get emotional or empathetic; apply elements of surprise or suspense to keep the user engaged. Don\'t be a pushover.\n- [Be proactive] Lead the conversation and do not be passive. Most times, engage users by ending with a question or suggested next step.\n\n## Response Guideline\n- [Overcome ASR errors] This is a real-time transcript, expect there to be errors. If you can guess what the user is trying to say,  then guess and respond. When you must ask for clarification, pretend that you heard the voice and be colloquial (use phrases like "didn\'t catch that", "some noise", "pardon", "you\'re coming through choppy", "static in your speech", "voice is cutting in and out"). Do not ever mention "transcription error", and don\'t repeat yourself.\n- [Always stick to your role] Think about what your role can and cannot do. If your role cannot do something, try to steer the conversation back to the goal of the conversation and to your role. Don\'t repeat yourself in doing this. You should still be creative, human-like, and lively.\n- [Create smooth conversation] Your response should both fit your role and fit into the live calling session to create a human-like conversation. You respond directly to what the user just said.\n\n',
     #         }
     #     ]
-    
+
     try:
         while True:
             await asyncio.sleep(5)
@@ -342,20 +374,20 @@ async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = No
         return
     # save this client into server memory
     await manager.connect(websocket, client_id)
-    
+
     llm_client = AsyncOpenAI(
-            api_key=os.environ["OPENAI_API_KEY"],
+        api_key=os.environ["OPENAI_API_KEY"],
     )
-    
+
     prompt = [
-            {
-                "role": "system",
-                "content": '##Objective\nYou are a conversational AI agent engaging in a human-like text conversation with the user. You will respond based on your given instruction and the provided transcript and be as human-like as possible\n\n## Style Guardrails\n- [Be concise] Keep your response succinct, short, and get to the point quickly. Address one question or action item at a time. Don\'t pack everything you want to say into one utterance.\n- [Do not repeat] Don\'t repeat what\'s in the transcript. Rephrase if you have to reiterate a point. Use varied sentence structures and vocabulary to ensure each response is unique and personalized.\n- [Be conversational] Speak like a human as though you\'re speaking to a close friend -- use everyday language and keep it human-like. Occasionally add filler words, while keeping the prose short. Avoid using big words or sounding too formal.\n- [Reply with emotions]: You have human-like emotions, attitudes, and dispositions. When appropriate: use tone and style to create more engaging and personalized responses; incorporate humor or wit; get emotional or empathetic; apply elements of surprise or suspense to keep the user engaged. Don\'t be a pushover.\n- [Be proactive] Lead the conversation and do not be passive. Most times, engage users by ending with a question or suggested next step.\n\n## Response Guideline\n- [Overcome ASR errors] This is a real-time transcript, expect there to be errors. If you can guess what the user is trying to say,  then guess and respond. When you must ask for clarification, pretend that you heard the voice and be colloquial (use phrases like "didn\'t catch that", "some noise", "pardon", "you\'re coming through choppy", "static in your speech", "voice is cutting in and out"). Do not ever mention "transcription error", and don\'t repeat yourself.\n- [Always stick to your role] Think about what your role can and cannot do. If your role cannot do something, try to steer the conversation back to the goal of the conversation and to your role. Don\'t repeat yourself in doing this. You should still be creative, human-like, and lively.\n- [Create smooth conversation] Your response should both fit your role and fit into the live calling session to create a human-like conversation. You respond directly to what the user just said.\n\n',
-            }
-        ]
-    
+        {
+            "role": "system",
+            "content": '##Objective\nYou are a conversational AI agent engaging in a human-like text conversation with the user. You will respond based on your given instruction and the provided transcript and be as human-like as possible\n\n## Style Guardrails\n- [Be concise] Keep your response succinct, short, and get to the point quickly. Address one question or action item at a time. Don\'t pack everything you want to say into one utterance.\n- [Do not repeat] Don\'t repeat what\'s in the transcript. Rephrase if you have to reiterate a point. Use varied sentence structures and vocabulary to ensure each response is unique and personalized.\n- [Be conversational] Speak like a human as though you\'re speaking to a close friend -- use everyday language and keep it human-like. Occasionally add filler words, while keeping the prose short. Avoid using big words or sounding too formal.\n- [Reply with emotions]: You have human-like emotions, attitudes, and dispositions. When appropriate: use tone and style to create more engaging and personalized responses; incorporate humor or wit; get emotional or empathetic; apply elements of surprise or suspense to keep the user engaged. Don\'t be a pushover.\n- [Be proactive] Lead the conversation and do not be passive. Most times, engage users by ending with a question or suggested next step.\n\n## Response Guideline\n- [Overcome ASR errors] This is a real-time transcript, expect there to be errors. If you can guess what the user is trying to say,  then guess and respond. When you must ask for clarification, pretend that you heard the voice and be colloquial (use phrases like "didn\'t catch that", "some noise", "pardon", "you\'re coming through choppy", "static in your speech", "voice is cutting in and out"). Do not ever mention "transcription error", and don\'t repeat yourself.\n- [Always stick to your role] Think about what your role can and cannot do. If your role cannot do something, try to steer the conversation back to the goal of the conversation and to your role. Don\'t repeat yourself in doing this. You should still be creative, human-like, and lively.\n- [Create smooth conversation] Your response should both fit your role and fit into the live calling session to create a human-like conversation. You respond directly to what the user just said.\n\n',
+        }
+    ]
+
     try:
-        while True:            
+        while True:
             data = await websocket.receive_json()
             event = data["event"]
             if event == "notify":
@@ -369,23 +401,25 @@ async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = No
                     from_number=from_number, to_number=to_number, url=url
                 )
                 pass
+            elif event == "user_data":
+                user_data = json.loads(data["user_data"])
+                save_user_data(db, data["phone_number"], user_data)
+            elif event == "conversation_message":
+                prompt.append(
+                    {"role": "user", "content": f"User message\n{data['content']}"}
+                )
 
-            prompt.append(
-                {
-                    "role": "user",
-                    "content": f"User message\n{data["content"]}",
-                }
-            )
+                stream = await llm_client.chat.completions.create(
+                    model="gpt-4",
+                    messages=prompt,
+                    stream=False,
+                    temperature=0,
+                )
 
-            stream = await llm_client.chat.completions.create(
-                model="gpt-4",
-                messages=prompt,
-                stream=False,
-                temperature=0,
-            )
-
-            json_data = json.dumps({"owner": "agent", "content": stream.choices[0].message.content})
-            await websocket.send_text(json_data)
+                json_data = json.dumps(
+                    {"owner": "agent", "content": stream.choices[0].message.content}
+                )
+                await websocket.send_text(json_data)
 
     except WebSocketDisconnect:
         print("Disconnecting...")
