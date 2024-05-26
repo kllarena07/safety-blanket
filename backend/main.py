@@ -239,21 +239,30 @@ async def websocket_handler(websocket: WebSocket, call_id: str):
                     )
                     user_data = read_user_data(db, other_number)
 
-                    # Get current utc time in utc format
-                    current_time = datetime.now(timezone.utc)
+                    if "last_location" not in user_data:
+                        user_data["last_location"] = ""
+                        user_data["last_updated"] = ""
+                    else:
 
-                    prev_time_str = user_data["last_updated"]
-                    prev_time = datetime.strptime(
-                        prev_time_str, "%Y-%m-%dT%H:%M:%SZ"
-                    ).replace(tzinfo=timezone.utc)
-                    time_difference = current_time - prev_time
+                        # Get current utc time in utc format
+                        current_time = datetime.now(timezone.utc)
 
-                    # Convert the time difference to minutes
-                    difference_in_minutes = time_difference.total_seconds() / 60
+                        prev_time_str = user_data["last_updated"]
+                        prev_time = datetime.strptime(
+                            prev_time_str, "%Y-%m-%dT%H:%M:%SZ"
+                        ).replace(tzinfo=timezone.utc)
+                        time_difference = current_time - prev_time
 
-                    user_data["last_updated"] = (
-                        str(difference_in_minutes) + " minutes ago"
-                    )
+                        # Convert the time difference to minutes
+                        difference_in_minutes = time_difference.total_seconds() / 60
+
+                        if difference_in_minutes > 60:
+                            user_data["last_location"] = ""
+                            user_data["last_updated"] = ""
+                        else:
+                            user_data["last_updated"] = (
+                                str(difference_in_minutes) + " minutes ago"
+                            )
 
                     llm_client.update_data(user_data=user_data)
                 return
