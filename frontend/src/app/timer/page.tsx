@@ -72,14 +72,15 @@ export default function Timer() {
             timer = setInterval(() => {
                 setTimeLeft(timeLeft - 1);
             }, 1000);
-        } else if (timeLeft === 0) {
+        } else if (isRunning && timeLeft === 0) {
             clearInterval(timer);
-            fetch(`https://7771014229a3.ngrok.app/phone/${userPhone}`)
+            setIsRunning(false);
+            fetch(`https://7771014229a3.ngrok.app/emergency/${userPhone}`)
                 .then((response) => response.json())
                 .then((data) => console.log(data));
             alert('Alerting emergency contact');
             setAlert(true);
-            setIsRunning(false);
+
         }
         return () => clearInterval(timer);
     }, [isRunning, timeLeft]);
