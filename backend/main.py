@@ -333,7 +333,6 @@ def call_phone(phone_number: str):
     )
     return JSONResponse(status_code=200, content={"message": "Call initiated"})
 
-
 @app.websocket("/timed-ws")
 async def timed_websocket_endpoint(
     websocket: WebSocket, client_id: Optional[str] = None
@@ -354,7 +353,7 @@ async def timed_websocket_endpoint(
     countdown = 5
     potential_emergency = False
     emergency_countdown = 10
-    
+
     user_id = client_id
     user_id = "+" + user_id[1:]
 
@@ -391,6 +390,7 @@ async def timed_websocket_endpoint(
                                 {"owner": "agent", "content": "Dangerous situation detected. Calling emergency phone number."}
                             )
                         )
+                        break
             except asyncio.TimeoutError:
                 if countdown > 0:
                     countdown -= 1
