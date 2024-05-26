@@ -348,8 +348,8 @@ async def timed_websocket_endpoint(
     await manager.connect(websocket, client_id)
 
     await websocket.send_text(
-        json.dumps({"owner": "agent", "content": "Are you okay?"})
-    )
+            json.dumps({"owner": "agent", "content": "Are you okay? Answer yes or no"})
+            )
 
     countdown = 5
     potential_emergency = False
@@ -361,21 +361,34 @@ async def timed_websocket_endpoint(
                 data = await asyncio.wait_for(websocket.receive_json(), timeout=1)
 
                 event = data["event"]
-                if event == "conversation_message" and data["content"].lower() == "yes":
-                    print("Okay.")
-                    await websocket.send_text(
-                        json.dumps(
-                            {"owner": "agent", "content": "Queueing another message."}
+                if event == "conversation_message":
+                    if data["content"].lower() == "yes" or data["content"].lower == "y":    
+                        print("Okay.")
+                        await websocket.send_text(
+                            json.dumps(
+                                {"owner": "agent", "content": "Queueing another message."}
+                            )
                         )
-                    )
-                    countdown = 5
-                    emergency_countdown = 10
+                        countdown = 5
+                        emergency_countdown = 10
+                    elif data["content"].lower() == "no" or data["content"].lower == "n":
+                        user_id = client_id
+                        user_id = "+" + user_id[1:]
+                        url = (
+                            f"{os.getenv('NGROK_IP_ADDRESS')}/twilio-emergency-webhook/{user_id}/edb76d4c1096b1b790235111b634b619",
+                        )
+                        from_number = os.getenv("AGENT_NUMBER")
+                        user_data = read_user_data(db, user_id)
+                        to_number = user_data["emergency_number"]
+                        twilio_client.create_emergency_call(
+                            from_number=from_number, to_number=to_number, url=url
+                        )
             except asyncio.TimeoutError:
                 if countdown > 0:
                     countdown -= 1
                 elif potential_emergency is False:
                     await websocket.send_text(
-                        json.dumps({"owner": "agent", "content": "Are you okay?"})
+                        json.dumps({"owner": "agent", "content": "Are you okay? Answer yes or no"})
                     )
                     potential_emergency = True
                 elif emergency_countdown > 0:
@@ -392,6 +405,9 @@ async def timed_websocket_endpoint(
                     to_number = user_data["emergency_number"]
                     twilio_client.create_emergency_call(
                         from_number=from_number, to_number=to_number, url=url
+                    )
+                    await websocket.send_text(
+                        json.dumps({"owner": "agent", "content": "No messages were sent. Calling emergency phone number."})
                     )
                     break
 
