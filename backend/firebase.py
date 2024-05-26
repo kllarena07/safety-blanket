@@ -17,7 +17,7 @@ def read_user_data(db, phone_number):
         doc = doc_ref.get()
         if doc.exists:
             return doc.to_dict()
-        return None
+        return {}
 
     except Exception as err:
-        return None
+        return {}

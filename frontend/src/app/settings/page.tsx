@@ -31,7 +31,10 @@ const SettingsPage: React.FC = () => {
     fetch(`http://localhost:8000/user/${userPhone}`)
       .then((res) => res.json())
       .then((data) => {
-        setUserData(data);
+        // Data might be empty
+        if (data) {
+          setUserData(data);
+        }
       })
       .catch((err) => {
         console.error(err);
