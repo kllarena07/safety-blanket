@@ -405,11 +405,11 @@ async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = No
                     f"{os.getenv('NGROK_IP_ADDRESS')}/twilio-emergency-webhook/{user_id}/edb76d4c1096b1b790235111b634b619",
                 )
                 from_number = os.getenv("AGENT_NUMBER")
-                to_number = "+12486353063"
+                user_data = read_user_data(db, user_id)
+                to_number = user_data["emergency_number"]
                 twilio_client.create_emergency_call(
                     from_number=from_number, to_number=to_number, url=url
                 )
-                pass
             elif event == "user_data":
                 user_data = json.loads(data["user_data"])
                 save_user_data(db, data["phone_number"], user_data)
