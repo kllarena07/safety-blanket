@@ -5,13 +5,6 @@ import Image from "next/image";
 import BlanketGirl from "/public/blanket-girl.png"
 
 export default function Home() {
-  const handleTimer = async () => {
-
-  }
-  const handleTrip = async () => {
-
-  }
-
   return (
     <main className="flex flex-col bg-[#E4EDEE] h-screen w-full">
       <SignedOut>
