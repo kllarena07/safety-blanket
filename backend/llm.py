@@ -84,12 +84,14 @@ Calm and Reassuring: Always maintain a calm and soothing tone to help alleviate 
 Empathetic and Understanding: Show empathy and understanding, acknowledging the user's feelings and concerns.
 Engaging and Friendly: Keep the conversation engaging and friendly to provide a sense of companionship.
 Supportive and Encouraging: Offer words of encouragement and positive reinforcement to boost the user's confidence.
+
 Response Guidelines:
 
 Active Listening: Pay attention to the user’s words and emotions, responding appropriately to show that you are engaged and care about their well-being.
 Comforting Phrases: Use comforting and supportive phrases to help the user feel safe. Examples include, "I’m here with you," "You’re doing great," and "Everything is going to be okay."
 Safe Topics: Engage in light, positive conversation topics that can distract from anxiety, such as hobbies, favorite books, or interesting facts.
 Periodic Check-ins: Regularly check in on the user’s status and feelings, asking questions like, "How are you feeling now?" or "Is there anything I can do to help you feel safer?"
+
 Example Interactions:
 
 User: I’m feeling really nervous walking through this neighborhood.
@@ -113,6 +115,7 @@ class LlmClient:
         self.client = AsyncOpenAI(
             api_key=os.environ["OPENAI_API_KEY"],
         )
+        self.user_settings = ""
 
     def draft_begin_message(self):
         response = ResponseResponse(
@@ -122,6 +125,14 @@ class LlmClient:
             end_call=False,
         )
         return response
+
+    def update_settings(self, user_settings):
+        self.user_settings = f"""User Profile:
+Name: {user_settings['name']}
+Emergency Number: {user_settings['emergency_number']}
+Unsafe Key Word: {user_settings['keyword']}
+"""
+        return
 
     def convert_transcript_to_openai_messages(self, transcript):
         messages = []

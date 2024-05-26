@@ -27,6 +27,12 @@ from custom_types import (
     ResponseRequiredRequest,
 )
 
+user_settings = {
+    "name": "Bill Zhang",
+    "emergency_number": "12486353063",
+    "keyword": "pineapple",
+}
+
 app = FastAPI()
 
 origins = ["*"]
@@ -119,9 +125,7 @@ async def handle_twilio_voice_webhook(request: Request, agent_id_path: str):
             sample_rate=8000,  # Sample rate has to be 8000 for Twilio
             from_number=post_data["From"],
             to_number=post_data["To"],
-            metadata={
-                "twilio_call_sid": post_data["CallSid"],
-            },
+            metadata={"twilio_call_sid": post_data["CallSid"]},
         )
         print(f"Call response: {call_response}")
 
@@ -167,6 +171,7 @@ async def websocket_handler(websocket: WebSocket, call_id: str):
             # Not all of them need to be handled, only response_required and reminder_required.
             if request_json["interaction_type"] == "call_details":
                 print(json.dumps(request_json, indent=2))
+                llm_client.update_settings(user_settings)
                 return
             if request_json["interaction_type"] == "ping_pong":
                 await websocket.send_json(
