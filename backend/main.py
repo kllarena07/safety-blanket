@@ -268,3 +268,34 @@ async def websocket_handler(websocket: WebSocket, call_id: str):
         await websocket.close(1011, "Server error")
     finally:
         print(f"LLM WebSocket connection closed for {call_id}")
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = None):
+    if client_id is None:
+        client_id = websocket.query_params.get("client_id")
+
+    if client_id is None:
+        await websocket.close(code=4001)
+        return
+    # save this client into server memory
+    await manager.connect(websocket, client_id)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            event = data["event"]
+            if event == "notify":
+                user_id = data["user_id"]
+                url = (
+                    f"{os.getenv('NGROK_IP_ADDRESS')}/twilio-emergency-webhook/{user_id}/edb76d4c1096b1b790235111b634b619",
+                )
+                from_number = os.getenv("AGENT_NUMBER")
+                to_number = "+12486353063"
+                twilio_client.create_emergency_call(
+                    from_number=from_number, to_number=to_number, url=url
+                )
+                pass
+
+    except WebSocketDisconnect:
+        print("Disconnecting...")
+        await manager.disconnect(client_id)
