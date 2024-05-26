@@ -306,6 +306,7 @@ async def websocket_handler(websocket: WebSocket, call_id: str):
     finally:
         print(f"LLM WebSocket connection closed for {call_id}")
 
+
 @app.get("/user/{phone_number}")
 def get_user(phone_number: str):
     user_data = read_user_data(db, phone_number)
@@ -332,8 +333,11 @@ def call_phone(phone_number: str):
     )
     return JSONResponse(status_code=200, content={"message": "Call initiated"})
 
+
 @app.websocket("/timed-ws")
-async def timed_websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = None):
+async def timed_websocket_endpoint(
+    websocket: WebSocket, client_id: Optional[str] = None
+):
     if client_id is None:
         client_id = websocket.query_params.get("client_id")
 
@@ -343,7 +347,9 @@ async def timed_websocket_endpoint(websocket: WebSocket, client_id: Optional[str
     # save this client into server memory
     await manager.connect(websocket, client_id)
 
-    await websocket.send_text(json.dumps({"owner": "agent", "content": "Are you okay?"}))
+    await websocket.send_text(
+        json.dumps({"owner": "agent", "content": "Are you okay?"})
+    )
 
     countdown = 5
     potential_emergency = False
@@ -355,22 +361,29 @@ async def timed_websocket_endpoint(websocket: WebSocket, client_id: Optional[str
                 data = await asyncio.wait_for(websocket.receive_json(), timeout=1)
 
                 event = data["event"]
-                if event == "conversation_message" and data['content'].lower() == "yes":
+                if event == "conversation_message" and data["content"].lower() == "yes":
                     print("Okay.")
-                    await websocket.send_text(json.dumps({"owner": "agent", "content": "Queueing another message."}))
+                    await websocket.send_text(
+                        json.dumps(
+                            {"owner": "agent", "content": "Queueing another message."}
+                        )
+                    )
                     countdown = 5
                     emergency_countdown = 10
             except asyncio.TimeoutError:
                 if countdown > 0:
                     countdown -= 1
                 elif potential_emergency is False:
-                    await websocket.send_text(json.dumps({"owner": "agent", "content": "Are you okay?"}))
+                    await websocket.send_text(
+                        json.dumps({"owner": "agent", "content": "Are you okay?"})
+                    )
                     potential_emergency = True
                 elif emergency_countdown > 0:
                     print(emergency_countdown)
                     emergency_countdown -= 1
                 else:
-                    user_id = client_id[1:]
+                    user_id = client_id
+                    user_id = "+" + user_id[1:]
                     url = (
                         f"{os.getenv('NGROK_IP_ADDRESS')}/twilio-emergency-webhook/{user_id}/edb76d4c1096b1b790235111b634b619",
                     )
@@ -380,8 +393,11 @@ async def timed_websocket_endpoint(websocket: WebSocket, client_id: Optional[str
                     twilio_client.create_emergency_call(
                         from_number=from_number, to_number=to_number, url=url
                     )
-                
-            await websocket.send_text(json.dumps({"owner": "system", "content": countdown}))
+                    break
+
+            await websocket.send_text(
+                json.dumps({"owner": "system", "content": countdown})
+            )
 
     except WebSocketDisconnect:
         print("Disconnecting...")
@@ -422,7 +438,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = No
             event = data["event"]
             if event == "notify":
                 user_id = data["user_id"]
-                
+
                 url = (
                     f"{os.getenv('NGROK_IP_ADDRESS')}/twilio-emergency-webhook/{user_id}/edb76d4c1096b1b790235111b634b619",
                 )
