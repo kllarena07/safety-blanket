@@ -2,18 +2,22 @@
 
 import Arrow from "./_arrow";
 import { useEffect, useRef, useState } from "react";
+import { useUser } from '@clerk/nextjs';
 
 export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [inputDisabled, setInputDisabled] = useState(true);
+  const [checkInTime, setCheckInTime] = useState(5);
   const [inputValue, setInputValue] = useState("");
   const [msgSocket, setMsgSocket] = useState(null);
   const chatRef = useRef(null);
 
-  useEffect(() => {
-    const messageWs = new WebSocket('ws://127.0.0.1:8000/message-ws?client_id=123');
-    const checkInWs = new WebSocket('ws://127.0.0.1:8000/checkin-ws?client_id=123');
+  const { user } = useUser();
+  const userPhone = user?.primaryPhoneNumber?.phoneNumber
 
+  useEffect(() => {
+    const messageWs = new WebSocket(`ws://127.0.0.1:8000/timed-ws?client_id=${userPhone}`);
+    
     messageWs.onopen = () => {
       console.log('Message WS is open now.');
       setMsgSocket(messageWs);
@@ -21,39 +25,29 @@ export default function Chat() {
     };
 
     messageWs.onmessage = (event) => {
-      console.log('WebSocket message received:', event);
-      setInputDisabled(false);
-      setMessages(prevMessages => [...prevMessages, JSON.parse(event.data)]);
+      const data = JSON.parse(event.data);
+
+      if (data.owner === "agent") {
+        console.log('WebSocket message received:', event);
+        setInputDisabled(false);
+        setMessages(prevMessages => [...prevMessages, data]);
+      } else {
+        setCheckInTime(data.content);
+      }
     };
 
     messageWs.onclose = () => {
       console.log('Message WS is closed now.');
     };
-
-    checkInWs.onopen = () => {
-      console.log('WebSocket is open now.');
-      setInputDisabled(false);
-    };
-
-    checkInWs.onmessage = (event) => {
-      console.log('WebSocket message received:', event);
-      setMessages(prevMessages => [...prevMessages, JSON.parse(event.data)]);
-    };
-
-    checkInWs.onclose = () => {
-      console.log('WebSocket is closed now.');
-    };
-
+    
     return () => {
       messageWs.close();
-      checkInWs.close();
     };
-  }, []);
+  }, [userPhone]);
 
   const appendNewMessage = (message: string) => {
     const data = {
-      event: message.toLowerCase().includes("pineapple") ? "event" : "conversation-message",
-      user_id: "12486353063",
+      event: message.toLowerCase().includes("pineapple") ? "event" : "conversation_message",
       owner: "user",
       content: message
     };
@@ -62,6 +56,7 @@ export default function Chat() {
     setInputDisabled(true);
     setMessages(prevMessages => [...prevMessages, data]);
     setInputValue("");
+    setCheckInTime(10);
   }
 
   const handleKeyDown = (evt) => {
@@ -75,30 +70,28 @@ export default function Chat() {
       </header>
       <section className="flex flex-col p-5 h-[calc(100dvh-76px)]">
         <section className="p-2 bg-[#232323] rounded-3xl h-[409px]" ref={chatRef}>
-          <ul className="overflow-y-scroll h-[calc(100%-44px)] flex flex-col">
-            {messages.map(({ owner, content }, index) => (
-              <li key={index} className={`${owner === "user" ? "self-end bg-[#FFDBDB]" : "self-start bg-[#CC7178]"} flex flex-col w-1/2 py-2 px-5 rounded-full text-black mb-5`}>
-                <p key={index}>{content}</p>
-              </li>
-            ))}
-            {inputDisabled && msgSocket !== null ? (
-              <li className="self-start bg-[#CC7178] flex flex-col w-1/2 py-2 px-5 rounded-full text-black mb-5">
-                ...
-              </li>
-            ) : ' '}
-          </ul>
-          <section className="flex w-full rounded-full bg-white overflow-hidden items-center">
-            <input disabled={inputDisabled} onChange={(evt) => setInputValue(evt.target.value)} value={inputValue} placeholder="Send a message" type="text" className="w-full text-black p-2.5 disabled:cursor-not-allowed" onKeyDown={handleKeyDown} />
-            <button className="mr-5" onClick={() => appendNewMessage(inputValue)}>
-              <Arrow className="size-5" />
-            </button>
-          </section>
+            <ul className="overflow-y-scroll h-[calc(100%-44px)] flex flex-col">
+              {messages.map(({ owner, content }, index) => (
+                <li key={index} className={`${owner === "user" ? "self-end bg-[#FFDBDB]" : "self-start bg-[#CC7178]"} flex flex-col w-1/2 px-5 py-1.5 rounded-full text-black mb-5`}>
+                  <p key={index}>{content}</p>
+                </li>
+              ))}
+              {inputDisabled && msgSocket !== null ? (
+                <li className="self-start bg-[#CC7178] flex flex-col w-1/2 py-2 px-5 rounded-full text-black mb-5">
+                  ...
+                </li>
+              ): ' '}
+            </ul>
+            <section className="flex w-full rounded-full bg-white overflow-hidden items-center">
+              <input disabled={inputDisabled} onChange={(evt) => setInputValue(evt.target.value)} value={inputValue} placeholder="Send a message" type="text" className="w-full text-black p-2.5 disabled:cursor-not-allowed" onKeyDown={handleKeyDown} />
+              <button className="mr-5" onClick={() => appendNewMessage(inputValue)}>
+                <Arrow className="size-5" />
+              </button>
+            </section>
         </section>
         <section className="bg-[#CC7178] text-black font-bold p-5 rounded-full my-5">
-          Next Check-in
+          Next Check-in: {checkInTime}
         </section>
-
-
       </section>
     </main>
   )
