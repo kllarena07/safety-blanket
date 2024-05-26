@@ -9,7 +9,7 @@ export default function Navbar() {
   const userPhone = user?.primaryPhoneNumber?.phoneNumber;
 
   const handleClick = () => {
-    fetch(`http://localhost:8000/phone/${userPhone}`)
+    fetch(`https://7771014229a3.ngrok.app/phone/${userPhone}`)
       .then((response) => response.json())
       .then((data) => console.log(data));
   }

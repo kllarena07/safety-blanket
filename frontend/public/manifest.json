@@ -1,21 +1,29 @@
 {
-  "name": "Chat PWA",
-  "short_name": "ChatPWA",
-  "start_url": "/chat",
+  "id": "com.safetyblanket.app",
+  "theme_color": "#CC7178",
+  "background_color": "#E4EDEE",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#007bff",
-  "description": "A simple chat messaging PWA built with Next.js",
+  "scope": "/",
+  "start_url": "/",
+  "name": "SafetyBlanket",
+  "short_name": "SafetyBlanket",
+  "description": "A safety app for females",
   "icons": [
     {
-      "src": "/icon-192x192.png",
+      "src": "icons/android-chrome-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icon-512x512.png",
+      "src": "icons/android-chrome-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
+    },
+    {
+      "src": "icons/maskable.png",
+      "sizes": "48x48",
+      "type": "image/x-icon",
+      "purpose": "maskable"
     }
   ]
 }
