@@ -62,13 +62,7 @@ class EmergencyLLMClient:
         return response
 
     def update_data(self, user_data):
-        self.user_data = f"""User Profile:
-Name: {user_data['name']}
-Emergency Number: {user_data['emergency_number']}
-Unsafe Key Word: {user_data['keyword']}
-Last Location: {user_data['last_location']}
-Last Updated: {user_data['last_updated']}
-"""
+        self.user_data = user_data
         return
 
     def convert_transcript_to_openai_messages(self, transcript):
@@ -92,7 +86,7 @@ Last Updated: {user_data['last_updated']}
             prompt.append(
                 {
                     "role": "user",
-                    "content": f"This user is current in danger, notify the emergency contact immediately: User Data:\n{self.user_data}",
+                    "content": f"This user is current in danger, notify the emergency contact immediately: User Data:\n{json.dumps(self.user_data)}",
                 }
             )
         transcript_messages = self.convert_transcript_to_openai_messages(
