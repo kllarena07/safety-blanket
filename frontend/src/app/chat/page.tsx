@@ -5,33 +5,30 @@ import { useEffect, useRef, useState } from "react";
 
 export default function Chat() {
   const [messages, setMessages] = useState([]);
-  const [inputDisabled, setInputDisabled] = useState(false);
+  const [inputDisabled, setInputDisabled] = useState(true);
   const [inputValue, setInputValue] = useState("");
   const [socket, setSocket] = useState(null);
   const chatRef = useRef(null);
   
   useEffect(() => {
-    // Create WebSocket connection.
     const ws = new WebSocket('ws://127.0.0.1:8000/ws?client_id=123');
     
-    // Set up event handlers.
     ws.onopen = () => {
       console.log('WebSocket is open now.');
       setSocket(ws);
+      setInputDisabled(false);
     };
 
     ws.onmessage = (event) => {
       console.log('WebSocket message received:', event);
       setInputDisabled(false);
       setMessages(prevMessages => [...prevMessages, JSON.parse(event.data)]);
-      if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
     };
 
     ws.onclose = () => {
       console.log('WebSocket is closed now.');
     };
 
-    // Clean up WebSocket connection when component unmounts.
     return () => {
       ws.close();
     };
@@ -44,8 +41,6 @@ export default function Chat() {
       owner: "user",
       content: message
     };
-
-    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
 
     socket.send(JSON.stringify(data));
     setInputDisabled(true);
@@ -63,14 +58,14 @@ export default function Chat() {
         <h1 className="text-3xl bg-white text-black font-bold">Check-in Chat</h1>
       </header>
       <section className="flex flex-col p-5 h-[calc(100dvh-76px)]">
-        <section className="p-2 bg-[#232323] rounded-3xl h-[calc(100%-152px)]" ref={chatRef}>
+        <section className="p-2 bg-[#232323] rounded-3xl h-[409px]" ref={chatRef}>
             <ul className="overflow-y-scroll h-[calc(100%-44px)] flex flex-col">
               {messages.map(({ owner, content }, index) => (
                 <li key={index} className={`${owner === "user" ? "self-end bg-[#FFDBDB]" : "self-start bg-[#CC7178]"} flex flex-col w-1/2 py-2 px-5 rounded-full text-black mb-5`}>
                   <p key={index}>{content}</p>
                 </li>
               ))}
-              {inputDisabled ? (
+              {inputDisabled && socket !== null ? (
                 <li className="self-start bg-[#CC7178] flex flex-col w-1/2 py-2 px-5 rounded-full text-black mb-5">
                   ...
                 </li>
