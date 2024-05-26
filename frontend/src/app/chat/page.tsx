@@ -2,6 +2,7 @@
 
 import Arrow from "./_arrow";
 import { useEffect, useRef, useState } from "react";
+import { useUser } from '@clerk/nextjs';
 
 export default function Chat() {
   const [messages, setMessages] = useState([]);
@@ -9,10 +10,42 @@ export default function Chat() {
   const [inputValue, setInputValue] = useState("");
   const [msgSocket, setMsgSocket] = useState(null);
   const chatRef = useRef(null);
+
+  interface UserData {
+    name: string;
+    emergency_number: string;
+    timer_passcode: string;
+    keyword: string;
+    last_location: string;
+    last_updated: string;
+  }
+
+  const { user } = useUser();
+  const userPhone = user?.primaryPhoneNumber?.phoneNumber
+  const [userData, setUserData] = useState<UserData>({
+    name: '',
+    emergency_number: '',
+    timer_passcode: '',
+    keyword: '',
+    last_location: '',
+    last_updated: '',
+  });
+
+  useEffect(() => {
+    if (!userPhone) return;
+    fetch(`http://localhost:8000/user/${userPhone}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setUserData(data);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+  }, [userPhone]);
   
   useEffect(() => {
     const messageWs = new WebSocket('ws://127.0.0.1:8000/message-ws?client_id=123');
-    const checkInWs = new WebSocket('ws://127.0.0.1:8000/checkin-ws?client_id=123');
+    // const checkInWs = new WebSocket('ws://127.0.0.1:8000/checkin-ws?client_id=123');
     
     messageWs.onopen = () => {
       console.log('Message WS is open now.');
@@ -30,29 +63,29 @@ export default function Chat() {
       console.log('Message WS is closed now.');
     };
 
-    checkInWs.onopen = () => {
-      console.log('WebSocket is open now.');
-      setInputDisabled(false);
-    };
+    // checkInWs.onopen = () => {
+    //   console.log('WebSocket is open now.');
+    //   setInputDisabled(false);
+    // };
 
-    checkInWs.onmessage = (event) => {
-      console.log('WebSocket message received:', event);
-      setMessages(prevMessages => [...prevMessages, JSON.parse(event.data)]);
-    };
+    // checkInWs.onmessage = (event) => {
+    //   console.log('WebSocket message received:', event);
+    //   setMessages(prevMessages => [...prevMessages, JSON.parse(event.data)]);
+    // };
 
-    checkInWs.onclose = () => {
-      console.log('WebSocket is closed now.');
-    };
+    // checkInWs.onclose = () => {
+    //   console.log('WebSocket is closed now.');
+    // };
     
     return () => {
       messageWs.close();
-      checkInWs.close();
+      // checkInWs.close();
     };
   }, []);
 
   const appendNewMessage = (message: string) => {
     const data = {
-      event: message.toLowerCase().includes("pineapple") ? "event" : "conversation-message",
+      event: message.toLowerCase().includes("pineapple") ? "event" : "conversation_message",
       user_id: "12486353063",
       owner: "user",
       content: message
@@ -77,7 +110,7 @@ export default function Chat() {
         <section className="p-2 bg-[#232323] rounded-3xl h-[409px]" ref={chatRef}>
             <ul className="overflow-y-scroll h-[calc(100%-44px)] flex flex-col">
               {messages.map(({ owner, content }, index) => (
-                <li key={index} className={`${owner === "user" ? "self-end bg-[#FFDBDB]" : "self-start bg-[#CC7178]"} flex flex-col w-1/2 py-2 px-5 rounded-full text-black mb-5`}>
+                <li key={index} className={`${owner === "user" ? "self-end bg-[#FFDBDB]" : "self-start bg-[#CC7178]"} flex flex-col w-1/2 px-5 py-1.5 rounded-full text-black mb-5`}>
                   <p key={index}>{content}</p>
                 </li>
               ))}
