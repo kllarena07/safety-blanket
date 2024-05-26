@@ -3,6 +3,7 @@
 import Arrow from "./_arrow";
 import { useEffect, useRef, useState } from "react";
 import { useUser } from '@clerk/nextjs';
+import { redirect } from 'next/navigation';
 
 export default function Chat() {
   const [messages, setMessages] = useState(Array<any>);
@@ -16,31 +17,42 @@ export default function Chat() {
   const userPhone = user?.primaryPhoneNumber?.phoneNumber
 
   useEffect(() => {
-    const messageWs = new WebSocket(`ws://7771014229a3.ngrok.app/timed-ws?client_id=${userPhone}`);
-    messageWs.onopen = () => {
-      console.log('Message WS is open now.');
-      setMsgSocket(messageWs);
-      setInputDisabled(false);
-    };
-
-    messageWs.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-
-      if (data.owner === "agent") {
-        console.log('WebSocket message received:', event);
+    let messageWs: WebSocket;
+    if (typeof userPhone !== 'undefined') {
+      // 7771014229a3.ngrok.app
+      messageWs = new WebSocket(`ws://127.0.0.1:8000/timed-ws?client_id=${userPhone}`);
+      messageWs.onopen = () => {
+        console.log('Message WS is open now.');
+        setMsgSocket(messageWs);
         setInputDisabled(false);
-        setMessages(prevMessages => [...prevMessages, data]);
-      } else {
-        setCheckInTime(data.content);
-      }
-    };
+      };
+  
+      messageWs.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+  
+        if (data.owner === "agent") {
+          console.log('WebSocket message received:', event);
+          setInputDisabled(false);
+          setMessages(prevMessages => [...prevMessages, data]);
+  
+          if (data.content.includes("Calling emergency phone number.")) {
+            setTimeout(() => {
+              redirect("/warning");
+            }, 1000);
+          }
+        } else {
+          setCheckInTime(data.content);
+        }
+      };
+      
+      messageWs.onclose = () => {
+        console.log('Message WS is closed now.');
+      };
+    }
 
-    messageWs.onclose = () => {
-      console.log('Message WS is closed now.');
-    };
 
     return () => {
-      messageWs.close();
+      if (typeof userPhone !== 'undefined') messageWs.close();
     };
   }, [userPhone]);
 
@@ -55,7 +67,7 @@ export default function Chat() {
     setInputDisabled(true);
     setMessages(prevMessages => [...prevMessages, data]);
     setInputValue("");
-    setCheckInTime(10);
+    setCheckInTime(5);
   }
 
   const handleKeyDown = (evt) => {

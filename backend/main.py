@@ -333,7 +333,6 @@ def call_phone(phone_number: str):
     )
     return JSONResponse(status_code=200, content={"message": "Call initiated"})
 
-
 @app.websocket("/timed-ws")
 async def timed_websocket_endpoint(
     websocket: WebSocket, client_id: Optional[str] = None
