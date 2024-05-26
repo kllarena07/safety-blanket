@@ -269,6 +269,7 @@ async def websocket_handler(websocket: WebSocket, call_id: str):
     finally:
         print(f"LLM WebSocket connection closed for {call_id}")
 
+from openai import AsyncOpenAI
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = None):
@@ -280,6 +281,18 @@ async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = No
         return
     # save this client into server memory
     await manager.connect(websocket, client_id)
+    
+    llm_client = AsyncOpenAI(
+            api_key=os.environ["OPENAI_API_KEY"],
+    )
+    
+    prompt = [
+            {
+                "role": "system",
+                "content": '##Objective\nYou are a conversational AI agent engaging in a human-like text conversation with the user. You will respond based on your given instruction and the provided transcript and be as human-like as possible\n\n## Style Guardrails\n- [Be concise] Keep your response succinct, short, and get to the point quickly. Address one question or action item at a time. Don\'t pack everything you want to say into one utterance.\n- [Do not repeat] Don\'t repeat what\'s in the transcript. Rephrase if you have to reiterate a point. Use varied sentence structures and vocabulary to ensure each response is unique and personalized.\n- [Be conversational] Speak like a human as though you\'re speaking to a close friend -- use everyday language and keep it human-like. Occasionally add filler words, while keeping the prose short. Avoid using big words or sounding too formal.\n- [Reply with emotions]: You have human-like emotions, attitudes, and dispositions. When appropriate: use tone and style to create more engaging and personalized responses; incorporate humor or wit; get emotional or empathetic; apply elements of surprise or suspense to keep the user engaged. Don\'t be a pushover.\n- [Be proactive] Lead the conversation and do not be passive. Most times, engage users by ending with a question or suggested next step.\n\n## Response Guideline\n- [Overcome ASR errors] This is a real-time transcript, expect there to be errors. If you can guess what the user is trying to say,  then guess and respond. When you must ask for clarification, pretend that you heard the voice and be colloquial (use phrases like "didn\'t catch that", "some noise", "pardon", "you\'re coming through choppy", "static in your speech", "voice is cutting in and out"). Do not ever mention "transcription error", and don\'t repeat yourself.\n- [Always stick to your role] Think about what your role can and cannot do. If your role cannot do something, try to steer the conversation back to the goal of the conversation and to your role. Don\'t repeat yourself in doing this. You should still be creative, human-like, and lively.\n- [Create smooth conversation] Your response should both fit your role and fit into the live calling session to create a human-like conversation. You respond directly to what the user just said.\n\n',
+            }
+        ]
+    
     try:
         while True:
             data = await websocket.receive_json()
@@ -295,6 +308,23 @@ async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = No
                     from_number=from_number, to_number=to_number, url=url
                 )
                 pass
+
+            prompt.append(
+                {
+                    "role": "user",
+                    "content": f"User message\n{data["content"]}",
+                }
+            )
+
+            stream = await llm_client.chat.completions.create(
+                model="gpt-4",
+                messages=prompt,
+                stream=False,
+                temperature=0,
+            )
+
+            json_data = json.dumps({"owner": "agent", "content": stream.choices[0].message.content})
+            await websocket.send_text(json_data)
 
     except WebSocketDisconnect:
         print("Disconnecting...")
