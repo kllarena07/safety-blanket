@@ -99,6 +99,7 @@ export default function Timer() {
             </Head>
 
             <div className="flex flex-col items-center">
+                <div className="text-2xl font-bold mb-4 text-white">Timer</div>
                 {!isRunning ? (
                     <div>
                         <select
