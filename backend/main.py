@@ -392,8 +392,11 @@ def save_user(phone_number: str, user_data: dict):
 
 @app.get("/phone/{phone_number}")
 def call_phone(phone_number: str):
-    url = f"{os.getenv('NGROK_IP_ADDRESS')}/twilio-voice-webhook/0814f86883b0337bb040580219120f66"
-    twilio_client.create_call("+12254173514", phone_number, url)
+    twilio_client.create_phone_call(
+        from_number="+12254173514",
+        to_number=phone_number,
+        agent_id="0814f86883b0337bb040580219120f66",
+    )
     return JSONResponse(status_code=200, content={"message": "Call initiated"})
 
 
