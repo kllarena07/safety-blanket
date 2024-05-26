@@ -433,3 +433,11 @@ async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = No
     except WebSocketDisconnect:
         print("Disconnecting...")
         await manager.disconnect(client_id)
+
+@app.get("/end-trip")
+def end_trip():
+    print("Ending trip.")
+
+@app.get("/end-safety-timer")
+def end_safety_timer():
+    print("Ending safety timer.")
