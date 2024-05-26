@@ -373,6 +373,33 @@ async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = No
         await manager.disconnect(client_id)
 
 
+@app.get("/user/{phone_number}")
+def get_user(phone_number: str):
+    user_data = read_user_data(db, phone_number)
+    return user_data
+
+
+@app.post("/user/{phone_number}")
+def save_user(phone_number: str, user_data: dict):
+    try:
+        save_user_data(db, phone_number, user_data)
+        return JSONResponse(status_code=200, content={"message": "User data saved"})
+    except Exception as err:
+        return JSONResponse(
+            status_code=500, content={"message": "Internal Server Error"}
+        )
+
+
+@app.get("/phone/{phone_number}")
+def call_phone(phone_number: str):
+    twilio_client.create_phone_call(
+        from_number="+12254173514",
+        to_number=phone_number,
+        agent_id="0814f86883b0337bb040580219120f66",
+    )
+    return JSONResponse(status_code=200, content={"message": "Call initiated"})
+
+
 @app.websocket("/message-ws")
 async def websocket_endpoint(websocket: WebSocket, client_id: Optional[str] = None):
     if client_id is None:
